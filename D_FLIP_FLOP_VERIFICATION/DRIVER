@@ -1,0 +1,36 @@
+ class driver;
+
+      transaction tr;  // An empty container to hold the packet we pull from the mailbox
+      mailbox mbx;     // Our map to the shared post office box
+      virtual inf vif; // Our remote control to the physical hardware interface
+
+      // The Constructor: Forces the Testbench to hand us the shared Mailbox and the Remote Control
+      function new(mailbox mbx, virtual inf vif);
+        this.mbx = mbx; // Connect the incoming mailbox to our internal variable
+        this.vif = vif; // Connect the incoming remote control to our internal variable
+      endfunction
+
+      // The main engine of the Driver. Runs continuously over time.
+      task run();
+
+        // A driver never stops. It runs forever, waiting for new mail.
+        forever begin
+
+          // 1. Check the mailbox. Take a packet out and put it into 'tr'.
+          // If the mailbox is empty, the Driver will pause here and wait for mail!
+          mbx.get(tr);
+
+          // 2. Wait for the hardware clock edge. We must sync with the hardware!
+          @(posedge vif.clk);
+
+          // 3. Take the random software data (tr) and push it to the hardware pins (vif)
+          vif.d <= tr.d;
+          vif.rst_n <= tr.rst_n;
+
+          // 4. Print out what we just drove, so we can see it on the screen
+          tr.display("DRIVER");
+
+        end // Closes the forever loop
+      endtask // Closes the run task
+
+    endclass // Closes the driver class (Moved to the very bottom!)
