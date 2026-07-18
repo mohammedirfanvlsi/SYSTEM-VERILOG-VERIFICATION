@@ -1,0 +1,49 @@
+class scoreboard;
+
+      transaction tr;  // Handle to store the incoming packet
+      mailbox mbx;     // Mailbox to receive data from the Monitor
+
+      bit expected_q;  // State variable: Stores the Golden Reference answer for the current cycle
+
+      // CONSTRUCTOR: Initializes the Scoreboard and connects the mailbox
+      function new(mailbox mbx);
+        this.mbx = mbx;
+      endfunction
+
+      // MAIN ENGINE: Runs continuously in the background
+      task run();
+
+        forever begin
+
+          // 1. Fetch the sampled data from the Monitor
+          mbx.get(tr);
+
+          // ==========================================
+          // THE COMPARATOR (Checks Actual vs Expected)
+          // ==========================================
+          // Simply: Teacher checks the student's answer against the Answer Key
+          // Technically: Verifies that the DUT output matches the predicted model state
+          if(tr.q == expected_q) begin
+            $display("[SCOREBOARD] PASS: q = %0b matches expected_q = %0b", tr.q, expected_q);
+          end
+          else begin
+            $error("[SCOREBOARD] FAIL: q = %0b does NOT match expected_q = %0b", tr.q, expected_q);
+          end
+
+          // ==========================================
+          // THE PREDICTOR (Calculates for the NEXT cycle)
+          // ==========================================
+          // Simply: The Teacher prepares the Answer Key for the next question on the test.
+          // Technically: Models the 1-cycle latency of the DFF. Updates the internal
+          // state variable based on current inputs, which will be checked on the next clock tick.
+
+          // Note: This must happen OUTSIDE the if/else block above!
+          if(tr.rst_n == 0)
+            expected_q = 0;   // If reset is active, next output MUST be 0
+          else
+            expected_q = tr.d; // If no reset, next output MUST equal current D
+
+        end // End of forever loop
+      endtask
+
+    endclass
