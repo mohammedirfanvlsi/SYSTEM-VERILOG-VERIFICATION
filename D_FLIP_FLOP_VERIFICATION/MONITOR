@@ -1,0 +1,29 @@
+  class monitor;
+      transaction tr;
+      mailbox mbx_scb;
+      mailbox mbx_cov;
+      virtual inf vif;
+
+      function new(mailbox mbx_scb, mailbox mbx_cov, virtual inf vif);
+        this.mbx_scb = mbx_scb;
+        this.mbx_cov = mbx_cov;
+        this.vif = vif;
+      endfunction
+
+      task run();
+        forever begin
+          @(posedge vif.clk);
+          #1; // Delay to prevent race condition
+
+          tr = new();
+          tr.d = vif.d;
+          tr.rst_n = vif.rst_n;
+          tr.q = vif.q;
+
+          tr.display("MONITOR");
+
+          mbx_scb.put(tr);
+          mbx_cov.put(tr);
+        end
+      endtask
+    endclass
