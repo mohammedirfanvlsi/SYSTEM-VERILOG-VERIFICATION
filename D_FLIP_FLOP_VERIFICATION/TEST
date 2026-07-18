@@ -1,0 +1,13 @@
+ class test;
+      environment env;
+
+      function new(virtual inf vif);
+        env = new(vif);
+      endfunction
+
+      task run();
+        env.gen.count = 20;
+        env.run();
+        @(env.gen.done);
+      endtask
+    endclass
