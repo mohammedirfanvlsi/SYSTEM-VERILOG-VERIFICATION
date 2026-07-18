@@ -1,0 +1,39 @@
+interface inf (input logic clk);
+
+      logic d;
+      logic q;
+      logic rst_n;
+
+      clocking cb @(posedge clk);
+        default input #1 output #0;
+        output d, rst_n;
+        input q;
+      endclocking
+
+      // Modports
+      modport d_ff(input d, input rst_n, input clk, output q);
+      modport tb(clocking cb);
+
+      // ASSERTIONS
+      // 1. Check Reset Behavior
+      property check_reset;
+        @(posedge clk)
+          (!rst_n) |-> (q == 1'b0);
+      endproperty
+
+      // 2. Check D to Q transfer
+      property check_d_to_q;
+        @(posedge clk)
+          // Disable checking during reset. If not in reset, Q should equal D from the previous clock cycle
+          disable iff (!rst_n)
+          (1'b1) |=> (q == $past(d));
+      endproperty
+
+      // Assert the properties
+      assert_reset: assert property (check_reset)
+        else $error("[%0t] FAIL: Q is not 0 during reset!", $time);
+
+      assert_d_to_q: assert property (check_d_to_q)
+        else $error("[%0t] FAIL: Q did not follow D!", $time);
+
+    endinterface
