@@ -1,0 +1,40 @@
+class coverage;
+
+      transaction tr;  // Handle to store the incoming packet
+      mailbox mbx;     // Mailbox to receive data from the Monitor
+
+      // ==========================================
+      // THE COVERGROUP (The Checklist)
+      // ==========================================
+      // Simply: A clipboard where we check off which inputs we have seen.
+      // Technically: Defines the coverage model. We are tracking the toggle
+      // rates of the 'd' and 'rst_n' signals to ensure 100% stimulus generation.
+      covergroup cover_dff;
+        c : coverpoint tr.d;
+        r : coverpoint tr.rst_n;
+      endgroup
+
+      // CONSTRUCTOR: Initializes the Coverage class, connects mailbox, and builds covergroup
+      function new(mailbox mbx);
+        this.mbx = mbx;
+        cover_dff = new(); // You correctly built the covergroup in memory!
+      endfunction
+
+      // MAIN ENGINE: Runs continuously in the background
+      task run();
+        forever begin
+
+          // 1. Fetch the sampled data from the Monitor
+          mbx.get(tr);
+
+          // 2. Tell the covergroup to take notes on this specific packet
+          cover_dff.sample();
+
+          // 3. Print out our current Coverage Score!
+          // Notice: I fixed the typos. No more 'tr.rst' and no more 'tr.cover_dff'
+          $display("[COVERAGE] d=%0b | rst_n=%0b | TOTAL SCORE = %0.2f%%",
+                    tr.d, tr.rst_n, cover_dff.get_inst_coverage());
+
+        end
+      endtask
+    endclass
