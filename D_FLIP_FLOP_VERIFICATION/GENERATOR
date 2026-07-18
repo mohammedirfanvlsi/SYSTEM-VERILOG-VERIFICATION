@@ -1,0 +1,45 @@
+ class generator;
+
+      transaction tr; // A handle to hold our packet
+      mailbox mxb;    // A handle to the post office box
+
+      int count;      // A number telling us HOW MANY packets we want to generate
+
+      event done;     // An alarm bell to ring when we are finished
+
+      // The Constructor: This runs exactly once when the Generator is created.
+      // It forces whoever creates the Generator to hand it a shared mailbox.
+      function new(mailbox mxb);
+        this.mxb = mxb; // Connect the shared mailbox to our internal 'mxb' variable
+      endfunction
+
+      // The main engine of the Generator. It is a task because it runs over time.
+      task run();
+
+        // We use a temporary variable 'i' to count from 0 up to 'count'
+        for(int i = 0; i < count; i = i + 1) begin
+
+          // 1. Create a brand new physical memory block for the transaction
+          tr = new();
+
+          // 2. Randomize the inputs (d and rst_n).
+          // If it returns 1, randomization was successful!
+          if(tr.randomize() == 1) begin
+            
+           
+
+            // 3. Print the packet to the screen so we can see what was generated
+            tr.display("GENERATOR");
+
+            // 4. Drop the randomized packet into the mailbox for the Driver to find
+            mxb.put(tr);
+
+          end
+        end
+
+        // 5. The loop is finished! Ring the alarm bell to tell the Test we are done generating.
+        ->done;
+
+      endtask // You missed this! It closes the task.
+
+    endclass
