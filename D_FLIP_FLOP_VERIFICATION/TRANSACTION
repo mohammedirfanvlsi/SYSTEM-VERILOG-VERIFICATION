@@ -1,0 +1,22 @@
+class transaction;
+
+      // We use 'rand' so the simulator can automatically generate random 1s and 0s for us later.
+      // We use 'bit' because it is a 2-state variable (can only be 0 or 1, no X or Z).
+      rand bit d;      // Random input data
+      rand bit rst_n;  // Random active-low reset
+
+      // 'q' is our output. We DO NOT use 'rand' here because the hardware flip-flop
+      // controls the output, not our random generator!
+      bit q;
+
+      // This is a helper function to easily print the contents of this packet to the screen.
+      // We pass a string 's' so we know who is printing it (e.g., "GENERATOR" or "MONITOR").
+      function void display(string s);
+
+        // %s  : Prints the string 's' (Who is calling this function)
+        // %0b : Prints the variables as binary (0 or 1) without extra spaces
+        $display("[%s] rst_n = %0b | d = %0b | q = %0b", s, rst_n, d, q);
+
+      endfunction
+
+    endclass    
