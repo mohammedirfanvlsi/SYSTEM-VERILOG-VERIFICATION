@@ -1,0 +1,38 @@
+ class environment;
+      generator gen;
+      driver    div;
+      monitor   mon;
+      scoreboard scb;
+      coverage  cov;
+      virtual inf vif;
+
+      mailbox gen_to_drv;
+      mailbox mon_to_scb;
+      mailbox mon_to_cov;
+
+      function new(virtual inf vif);
+        this.vif = vif;
+
+        gen_to_drv = new();
+        mon_to_scb = new();
+        mon_to_cov = new();
+
+        gen = new(gen_to_drv);
+        div = new(gen_to_drv, vif);
+
+        // Pass BOTH mailboxes to the Monitor!
+        mon = new(mon_to_scb, mon_to_cov, vif);
+        scb = new(mon_to_scb);
+        cov = new(mon_to_cov);
+      endfunction
+
+      task run();
+        fork
+          gen.run();
+          div.run();
+          mon.run();
+          scb.run();
+          cov.run();
+        join_any
+      endtask
+    endclass
