@@ -1,0 +1,14 @@
+module top;
+      bit clk;
+      always #5 clk = ~clk;
+
+      inf vif(clk);
+      d_flip_flop dut(vif.d_ff);
+
+      initial begin
+        test t1;
+        t1 = new(vif);
+        t1.run();
+        $finish;
+      end
+    endmodule
