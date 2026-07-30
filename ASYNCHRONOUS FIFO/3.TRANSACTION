@@ -1,0 +1,54 @@
+ class transaction #(parameter width = 8);
+
+      // ----------------------------------------------------
+      // 1. INPUTS (The Stimulus)
+      // We use 'rand' so the Generator can shake the box and
+      // automatically create random scenarios for us.
+      // ----------------------------------------------------
+      rand bit [width - 1:0] data_in; // 8-bit data going INTO the FIFO
+
+      rand bit rrst_n; // Read Reset
+      rand bit wrst_n; // Write Reset
+
+      rand bit wr_en;  // Randomly decide to write (1) or not (0)
+      rand bit re_en;  // Randomly decide to read (1) or not (0)
+
+      // ----------------------------------------------------
+      // 2. OUTPUTS (The Observation)
+      // No 'rand' here! The Monitor will fill these in
+      // by looking at the physical microchip wires.
+      // ----------------------------------------------------
+      // BUG FIX: Changed addr_width to width. data_out must be the same size as data_in!
+      bit [width - 1:0] data_out;
+
+      bit full;
+      bit empty;
+
+      // ----------------------------------------------------
+      // 3. CONSTRAINTS (The Rules of the Box)
+      // These rules control the 'rand' variables above.
+      // ----------------------------------------------------
+      constraint control {
+
+        // Brilliant! This forces the resets to stay High (1)
+        // so the test doesn't accidentally reset the memory and crash.
+        rrst_n == 1;
+        wrst_n == 1;
+
+        // The ':=' symbol means "Weight".
+        // Out of 100 chances, it will pick '1' 80 times, and '0' 20 times.
+        // This ensures we do a lot of writing and reading, but sometimes pause.
+        wr_en dist { 1 := 80 , 0 := 20 };
+        re_en dist { 1 := 80 , 0 := 20 };
+      }
+
+      // ----------------------------------------------------
+      // 4. THE DISPLAY FUNCTION
+      // A helper tool to print the box contents cleanly to the terminal.
+      // ----------------------------------------------------
+      function void display(string s);
+        $display("[%s] wr_en=%0b | re_en=%0b | data_in=%0d | data_out=%0d | full=%0b | empty=%0b",
+                 s, wr_en, re_en, data_in, data_out, full, empty);
+      endfunction
+
+    endclass
