@@ -1,0 +1,37 @@
+class coverage;
+
+      transaction tr;
+      mailbox mon_to_cov;
+
+      // 1. Define the Checklist (covergroup)
+      // We want to make sure the test actually hits all these conditions.
+      covergroup cg;
+        coverpoint tr.wr_en;
+        coverpoint tr.re_en;
+        coverpoint tr.full;
+        coverpoint tr.empty;
+      endgroup
+
+      // 2. Constructor
+      function new(mailbox mon_to_cov);
+        this.mon_to_cov = mon_to_cov;
+        cg = new(); // You must build the checklist once at the start!
+      endfunction
+
+      // 3. Run Task
+      task run();
+        forever begin
+
+          // Get the real data from the Monitor
+          mon_to_cov.get(tr);
+
+          // Tick the boxes on the checklist based on the real data
+          cg.sample();
+
+          // Print the current coverage score (0 to 100%)
+          $display("[COVERAGE] Score = %0f%%", cg.get_inst_coverage());
+
+        end
+      endtask
+
+    endclass
