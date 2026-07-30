@@ -1,0 +1,53 @@
+   class scoreboard;
+      transaction tr;
+      mailbox mon_to_sco;
+
+      int mem[$]; // Golden Memory (Queue)
+
+      // Variables to remember the 1-clock delay!
+      bit check_next_cycle = 0;
+      int expected_data;
+
+      function new(mailbox mon_to_sco);
+        this.mon_to_sco = mon_to_sco;
+      endfunction
+
+      task run();
+        forever begin
+          mon_to_sco.get(tr);
+
+          // --- RESET LOGIC ---
+          if (!tr.wrst_n || !tr.rrst_n) begin
+            mem.delete();
+            check_next_cycle = 0;
+            continue; // Skip the rest of the loop during reset
+          end
+
+          // --- 1-CLOCK DELAY CHECK ---
+          // Because the FIFO takes 1 clock cycle to spit out the data,
+          // we check data_out on the clock cycle AFTER we pressed read!
+          if (check_next_cycle == 1) begin
+            if (tr.data_out !== expected_data) begin
+              $error("[SCOREBOARD] FAIL! Expected: %0d | Actual: %0d", expected_data, tr.data_out);
+            end else begin
+              $display("[SCOREBOARD] PASS! Matched: %0d", tr.data_out);
+            end
+            check_next_cycle = 0; // Turn it off after checking
+          end
+
+          // --- WRITE LOGIC ---
+          if (tr.wr_en == 1) begin
+            mem.push_back(tr.data_in);
+          end
+
+          // --- READ LOGIC ---
+          if (tr.re_en == 1) begin
+            if (mem.size() > 0) begin
+              expected_data = mem.pop_front();
+              check_next_cycle = 1; // Tell the scoreboard to check the output NEXT cycle!
+            end
+          end
+
+        end
+      endtask
+    endclass
