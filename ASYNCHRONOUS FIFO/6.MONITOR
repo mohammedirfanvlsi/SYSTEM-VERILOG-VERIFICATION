@@ -1,0 +1,70 @@
+ class monitor;
+
+      // ----------------------------------------------------
+      // VARIABLES
+      // ----------------------------------------------------
+      transaction tr;
+
+      // The 'virtual interface' (The remote control to read the wires)
+      virtual inf vif;
+
+      // We need TWO separate tunnels so Scoreboard and Coverage don't fight!
+      mailbox mon_to_sco;
+      mailbox mon_to_cov;
+
+      // ----------------------------------------------------
+      // CONSTRUCTOR
+      // ----------------------------------------------------
+      // The Environment hands the Monitor its virtual interface, and
+      // both of the mailboxes it needs to send data out.
+      function new(virtual inf vif, mailbox mon_to_sco, mailbox mon_to_cov);
+        this.vif = vif;
+        this.mon_to_sco = mon_to_sco;
+        this.mon_to_cov = mon_to_cov;
+      endfunction
+
+      // ----------------------------------------------------
+      // RUN TASK
+      // ----------------------------------------------------
+      task run();
+
+        forever begin
+
+          // Step A: Build a brand new, empty cardboard box to take notes
+          tr = new();
+
+          // Step B: Split our eyes into two ghosts using fork...join so
+          // we can watch both clocks at the exact same time!
+                   fork
+            begin // The Write Picture
+              @(vif.cb_wr);
+              tr.wr_en   = vif.cb_wr.wr_en;
+              tr.data_in = vif.cb_wr.data_in;
+              tr.full    = vif.cb_wr.full;
+
+              // ADD THIS LINE: Monitor must look at the write reset!
+              tr.wrst_n  = vif.cb_wr.wrst_n;
+            end
+            begin // The Read Picture
+              @(vif.cb_rd);
+              tr.re_en   = vif.cb_rd.re_en;
+              tr.data_out= vif.cb_rd.data_out;
+              tr.empty   = vif.cb_rd.empty;
+
+              // ADD THIS LINE: Monitor must look at the read reset!
+              tr.rrst_n  = vif.cb_rd.rrst_n;
+            end
+          join
+
+          // Step C: Push the button on the box to print its Name Tag
+          tr.display("MONITOR");
+
+          // Step D: Shove a copy of the exact same box down BOTH tunnels!
+          mon_to_sco.put(tr);
+          mon_to_cov.put(tr);
+
+        end
+
+      endtask
+
+    endclass
