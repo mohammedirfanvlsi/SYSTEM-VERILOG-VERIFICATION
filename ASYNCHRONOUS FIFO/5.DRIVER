@@ -1,0 +1,62 @@
+   class driver;
+      transaction tr;
+      mailbox gen_to_drv;
+      virtual inf vif;
+
+      // The constructor with the mailbox FIRST to match your Environment
+      function new(mailbox gen_to_drv, virtual inf vif);
+        this.gen_to_drv = gen_to_drv;
+        this.vif = vif;
+      endfunction
+
+      task run();
+
+        // ----------------------------------------------------
+        // 1. THE RESET PHASE
+        // ----------------------------------------------------
+        $display("[DRIVER] Factory Power On! Holding Reset buttons...");
+        vif.cb_wr.wrst_n <= 0;
+        vif.cb_rd.rrst_n <= 0;
+        vif.cb_wr.wr_en  <= 0;
+        vif.cb_rd.re_en  <= 0;
+
+        repeat(2) @(vif.cb_wr); // Hold reset for 2 clock cycles
+
+        vif.cb_wr.wrst_n <= 1; // Release write reset
+        vif.cb_rd.rrst_n <= 1; // Release read reset
+        $display("[DRIVER] Reset Complete! Starting the conveyor belt.");
+
+        // ----------------------------------------------------
+        // 2. THE FACTORY LOOP
+        // ----------------------------------------------------
+        forever begin
+          gen_to_drv.get(tr);
+
+          // If we are WRITING, synchronize to the Write Clock
+          if (tr.wr_en == 1) begin
+            vif.cb_wr.wr_en   <= 1;
+            vif.cb_wr.data_in <= tr.data_in;
+            vif.cb_rd.re_en   <= 0;
+
+            @(vif.cb_wr); // Wait for Write Clock tick
+            vif.cb_wr.wr_en   <= 0; // Release the button safely
+
+            @(vif.cb_wr); // DEAD CYCLE: Wait 1 cycle for finger to fully release!
+          end
+
+          // If we are READING, synchronize to the Read Clock
+          else if (tr.re_en == 1) begin
+            vif.cb_wr.wr_en   <= 0;
+            vif.cb_rd.re_en   <= 1;
+
+            @(vif.cb_rd); // Wait for Read Clock tick
+            vif.cb_rd.re_en   <= 0; // Release the button safely
+
+            @(vif.cb_rd); // DEAD CYCLE: Wait 1 cycle for finger to fully release!
+          end
+
+          $display("[DRIVER] Pushed to hardware -> wr_en=%0d | re_en=%0d | data_in=%0d", tr.wr_en, tr.re_en, tr.data_in);
+        end
+      endtask
+
+    endclass
