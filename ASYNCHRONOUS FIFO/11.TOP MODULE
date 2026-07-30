@@ -1,0 +1,45 @@
+ `include "Transaction.sv"
+    `include "Generator.sv"
+    `include "Driver.sv"
+    `include "Monitor.sv"
+    `include "Scoreboard.sv"
+    `include "Coverage.sv"     
+    `include "Environment.sv"
+
+    // MAKE SURE THIS LINE IS HERE!
+    `include "Test.sv"
+
+ module top;
+
+      logic wclk;
+      logic rclk;
+
+      // 1. Clock Generation
+      initial begin
+        wclk = 0;
+        forever #5 wclk = ~wclk;
+      end
+
+      initial begin
+        rclk = 0;
+        forever #10 rclk = ~rclk;
+      end
+
+      // 2. Physical Interface Instantiation
+      inf bus (wclk, rclk);
+
+      // 3. Physical DUT Instantiation
+      asyncronous_fifo dut (bus.async_fifo);
+
+      // 4. Software Execution
+      test t;
+
+      initial begin
+        // Pass the hardware bus into the software Test
+        t = new(bus);
+
+        // Start the Test
+        t.run();
+      end
+
+    endmodule
