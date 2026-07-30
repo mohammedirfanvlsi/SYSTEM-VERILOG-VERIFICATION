@@ -1,0 +1,94 @@
+    `include "Interface.sv" // Automatically pastes the interface here!
+
+  // Notice we pass the parameters here so it matches the interface!
+    module asyncronous_fifo #(parameter width = 8, depth = 8, addr_width = 3)
+      (inf.async_fifo bus); // Connects to the DUT modport in the interface
+
+      // The Memory Array
+      reg [width-1:0] mem [0:depth-1];
+
+      // The Pointers (With the Extra 1-bit Lap Counter)
+      reg [addr_width:0] wr_ptr_bin, re_ptr_gray;
+      reg [addr_width:0] re_ptr_bin, wr_ptr_gray;
+
+      // The 2-Flip-Flop Airlocks (Synchronizers)
+      reg [addr_width:0] wr_ptr_gray_syn1, wr_ptr_gray_syn2;
+      reg [addr_width:0] re_ptr_gray_syn1, re_ptr_gray_syn2;
+
+      // The Binary to Gray Math Trick
+      function [addr_width:0] binary2gray;
+        input [addr_width:0] bin;
+        binary2gray = (bin >> 1) ^ bin;
+      endfunction
+
+      // ----------------------------------------------------
+      // WRITE BLOCK (Triggered by Write Clock)
+      // ----------------------------------------------------
+      always @(posedge bus.wclk or negedge bus.wrst_n) begin
+        if(!bus.wrst_n) begin
+          wr_ptr_bin  <= 0;
+          wr_ptr_gray <= 0;
+        end
+        else if(bus.wr_en && !bus.full) begin
+          mem[wr_ptr_bin[addr_width-1:0]] <= bus.data_in; // Drop MSB for memory slot
+          wr_ptr_bin  <= wr_ptr_bin + 1;                  // Binary math +1
+          wr_ptr_gray <= binary2gray(wr_ptr_bin + 1);     // Convert new bin to gray
+        end
+      end
+
+      // ----------------------------------------------------
+      // READ BLOCK (Triggered by Read Clock)
+      // ----------------------------------------------------
+      always @(posedge bus.rclk or negedge bus.rrst_n) begin
+        if(!bus.rrst_n) begin
+          re_ptr_bin  <= 0;
+          re_ptr_gray <= 0;
+          bus.data_out <= 0;
+        end
+        else if(bus.re_en && !bus.empty) begin
+          bus.data_out <= mem[re_ptr_bin[addr_width-1:0]];
+          re_ptr_bin   <= re_ptr_bin + 1;
+          re_ptr_gray  <= binary2gray(re_ptr_bin + 1);
+        end
+      end
+
+      // ----------------------------------------------------
+      // READ-TO-WRITE AIRLOCK (Runs on Write Clock)
+      // ----------------------------------------------------
+      always @(posedge bus.wclk or negedge bus.wrst_n) begin
+        if(!bus.wrst_n) begin
+          re_ptr_gray_syn1 <= 0;
+          re_ptr_gray_syn2 <= 0;
+        end
+        else begin
+          re_ptr_gray_syn1 <= re_ptr_gray;      // Door 1
+          re_ptr_gray_syn2 <= re_ptr_gray_syn1; // Door 2 (Safe to use!)
+        end
+      end
+
+      // ----------------------------------------------------
+      // WRITE-TO-READ AIRLOCK (Runs on Read Clock)
+      // ----------------------------------------------------
+      always @(posedge bus.rclk or negedge bus.rrst_n) begin
+        if(!bus.rrst_n) begin
+          wr_ptr_gray_syn1 <= 0;
+          wr_ptr_gray_syn2 <= 0;
+        end
+        else begin
+          wr_ptr_gray_syn1 <= wr_ptr_gray;      // Door 1
+          wr_ptr_gray_syn2 <= wr_ptr_gray_syn1; // Door 2 (Safe to use!)
+        end
+      end
+
+      // ----------------------------------------------------
+      // THE FLAGS
+      // ----------------------------------------------------
+      // FULL: Evaluated in Write domain. Invert the top 2 bits of the Read pointer!
+      assign bus.full = (wr_ptr_gray ==
+                        {~re_ptr_gray_syn2[addr_width : addr_width-1],
+                          re_ptr_gray_syn2[addr_width-2 : 0]});
+
+      // EMPTY: Evaluated in Read domain. Must be 100% identical.
+      assign bus.empty = (re_ptr_gray == wr_ptr_gray_syn2);
+
+    endmodule
