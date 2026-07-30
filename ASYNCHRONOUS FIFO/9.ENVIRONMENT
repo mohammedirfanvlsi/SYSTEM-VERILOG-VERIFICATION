@@ -1,0 +1,60 @@
+class environment;
+
+      // 1. Declare the Workers
+      generator gen;
+      driver drv;
+      monitor mon;
+      scoreboard sco;
+      coverage cov;
+
+      // 2. Declare the Mailbox Tubes
+      mailbox gen_to_drv;
+      mailbox mon_to_sco;
+      mailbox mon_to_cov;
+
+      // 3. Declare the Remote Control
+      virtual inf vif;
+
+      // ----------------------------------------------------
+      // CONSTRUCTOR (Building the Factory)
+      // ----------------------------------------------------
+      // The Top Module will pass the physical interface in here.
+      function new(virtual inf vif);
+
+        // Save the remote control
+        this.vif = vif;
+
+        // Step A: Build the Mailbox tubes first!
+        // You cannot connect workers to a tube that doesn't exist yet.
+        gen_to_drv = new();
+        mon_to_sco = new();
+        mon_to_cov = new();
+
+        // Step B: Build the Workers and hand them their tools!
+        gen = new(gen_to_drv);
+        drv = new(gen_to_drv, vif);
+        mon = new(vif, mon_to_sco, mon_to_cov);
+        sco = new(mon_to_sco);
+        cov = new(mon_to_cov);
+
+      endfunction
+
+      // ----------------------------------------------------
+      // RUN TASK (Starting the Factory)
+      // ----------------------------------------------------
+      task run();
+
+        // fork...join_any starts all these tasks at the exact same millisecond.
+        // We use join_any (instead of join) so that the factory keeps running
+        // infinitely until the CEO forces it to stop.
+        fork
+          gen.run();
+          drv.run();
+          mon.run();
+          sco.run();
+          cov.run();
+        join_any
+
+      endtask
+
+    endclass
