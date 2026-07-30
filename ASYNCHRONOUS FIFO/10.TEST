@@ -1,0 +1,40 @@
+  class test;
+
+      environment env;
+
+      function new(virtual inf vif);
+        env = new(vif);
+      endfunction
+
+      task run();
+
+        // 1. Configure the factory
+        env.gen.count = 50;
+
+        // 2. Start the factory IN THE BACKGROUND
+        // We use fork...join_none so the CEO can immediately move to the next line
+        // to watch the sky for the flare.
+        fork
+          env.run();
+        join_none
+
+        // 3. WAIT FOR THE EVENT (The Flare Gun)
+        // The CEO goes to sleep here. He wakes up the exact nanosecond
+        // the Generator finishes making the 50th box and executes '-> done'.
+        @(env.gen.done);
+
+        // 4. WAIT FOR THE DRIVER
+        // The Generator is done, but the mailbox is full of boxes!
+        // The CEO must wait until the Driver takes every single box out of the tunnel.
+        wait(env.gen_to_drv.num() == 0);
+
+        // Let the final box travel through the physical hardware wires.
+        #100;
+
+        // 5. SAFELY SHUT DOWN
+        $display("[TEST] All tests completed! Shutting down.");
+        $finish;
+
+      endtask
+
+    endclass
