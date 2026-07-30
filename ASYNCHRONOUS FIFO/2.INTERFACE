@@ -1,0 +1,47 @@
+interface inf #(parameter width = 8, depth = 8, addr_width = 3) (input logic wclk, rclk);
+
+      // 1. The Physical Wires
+      logic [width-1:0] data_in;
+      logic [width-1:0] data_out;
+      logic wrst_n, rrst_n;
+      logic wr_en, re_en;
+      logic full, empty;
+
+      // 2. The Write Clocking Block (Synchronizes the Write Runner)
+      clocking cb_wr @(posedge wclk);
+        default input #1 output #0;
+        output data_in, wr_en, wrst_n; // The Testbench sends these IN to the FIFO
+        input full;                    // The Testbench reads this FROM the FIFO
+      endclocking
+
+      // 3. The Read Clocking Block (Synchronizes the Read Runner)
+      clocking cb_rd @(posedge rclk);
+        default input #1 output #0;
+        output re_en, rrst_n;          // The Testbench sends these IN
+        input empty, data_out;         // The Testbench reads these FROM
+      endclocking
+
+      // 4. Modport for the DUT (Tells the microchip which wires are Inputs/Outputs)
+      modport async_fifo (
+        input  wclk, rclk, wrst_n, rrst_n, wr_en, re_en, data_in,
+        output full, empty, data_out
+      );
+
+      // 5. Modport for the Testbench (Gives the software access to the clocks)
+      modport tb (clocking cb_wr, clocking cb_rd);
+
+      // 6. Assertions (The Security Guard checking the external lights)
+      property check_write;
+        @(posedge wclk) disable iff(!wrst_n)
+        (wr_en == 1) |-> (full == 0); // If writing, FULL must be off!
+      endproperty
+
+      property check_read;
+        @(posedge rclk) disable iff(!rrst_n)
+        (re_en == 1) |-> (empty == 0); // If reading, EMPTY must be off!
+      endproperty
+
+      assert property (check_write) else $error("[%0t] Illegal Write when FULL!", $time);
+      assert property (check_read)  else $error("[%0t] Illegal Read when EMPTY!", $time);
+
+    endinterface
