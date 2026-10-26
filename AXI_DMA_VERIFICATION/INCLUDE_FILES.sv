@@ -1,0 +1,11 @@
+
+ `include "AXI_INTERFACE.sv"
+    `include "AXI_DMA_TRANSACTION.sv"
+    `include "AXI_DMA_GENERATOR.sv"
+    `include "AXI_DMA_DRIVER.sv"
+    `include "AXI_DMA_MONITOR.sv"
+    `include "AXI_DMA_SCOREBOARD.sv"
+    `include "AXI_DMA_COVERAGE.sv"
+    `include "AXI_DMA_ENVIRONMENT.sv"
+    `include "AXI_DMA_TEST.sv"
+    `include "AXI_DMA_TOP.sv"
